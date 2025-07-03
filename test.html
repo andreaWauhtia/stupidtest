@@ -8,31 +8,36 @@
     
     <title>Test Capteur Orientation</title>
     <style>
-        body { font-family: monospace; padding: 20px; font-size: 16px; -webkit-font-smoothing: antialiased;}
-        #status, #info { padding: 10px; background-color: #f0f0f0; border: 1px solid #ccc; margin-bottom: 10px; }
-        #data { white-space: pre; font-weight: bold; font-size: 20px;}
-        button { font-size: 18px; padding: 12px 20px; }
+        body { font-family: monospace, sans-serif; padding: 20px; font-size: 16px; line-height: 1.6; }
+        .container { max-width: 600px; margin: auto; }
+        #status, #info { padding: 10px; background-color: #f0f0f0; border: 1px solid #ccc; margin-bottom: 10px; border-radius: 5px; }
+        #data { white-space: pre-wrap; font-weight: bold; font-size: 20px; background: #222; color: #0f0; padding: 15px; border-radius: 5px; }
+        button { width: 100%; font-size: 18px; padding: 12px 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
     </style>
 </head>
 <body>
-    <h1>Test du Capteur d'Orientation</h1>
-    <div id="status">En attente d'interaction...</div>
-    <div id="info" style="display: none;"></div>
-    <hr>
-    <div id="data"></div>
+    <div class="container">
+        <h1>Test Capteur d'Orientation</h1>
+        
+        <button id="perm_button">Démarrer le test</button>
+        
+        <div id="status" style="margin-top: 15px;">En attente du démarrage...</div>
+        <div id="info" style="display: none;"></div>
+        <hr>
+        <div id="data">---</div>
+    </div>
 
     <script>
         const statusEl = document.getElementById('status');
         const infoEl = document.getElementById('info');
         const dataEl = document.getElementById('data');
-
-        statusEl.innerHTML = '<button id="perm_button">Démarrer le test</button>';
         const button = document.getElementById('perm_button');
 
         button.onclick = () => {
+            button.style.display = 'none'; // Cacher le bouton après le clic
             statusEl.textContent = 'Demande de permission...';
 
-            // La demande de permission unifiée est la meilleure approche
             if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                 DeviceOrientationEvent.requestPermission().then(permissionState => {
                     if (permissionState === 'granted') {
@@ -41,15 +46,14 @@
                         statusEl.textContent = 'Permission refusée.';
                     }
                 }).catch(err => {
-                    statusEl.textContent = `Erreur permission: ${err.message}`;
+                    statusEl.textContent = `Erreur de permission : ${err.message}`;
                 });
             } else {
-                startSensor();
+                startSensor(); // Pour les appareils non-iOS
             }
         };
 
         function startSensor() {
-            // Test de la présence de l'API moderne
             if ('AbsoluteOrientationSensor' in window) {
                 statusEl.textContent = 'API Moderne (AbsoluteOrientationSensor) détectée.';
                 try {
@@ -60,17 +64,19 @@
                         const heading = (yaw * 180 / Math.PI + 360) % 360;
                         
                         infoEl.style.display = 'block';
-                        infoEl.textContent = "Capteur démarré. Tournez le téléphone."
-                        dataEl.innerHTML = `Heading (Cap calculé): \n${heading.toFixed(1)}°`;
+                        infoEl.textContent = "Capteur démarré. Tournez le téléphone.";
+                        dataEl.textContent = `Heading: ${heading.toFixed(1)}°`;
                     };
                     sensor.onerror = (event) => {
-                        statusEl.textContent = `Erreur capteur: ${event.error.name}`;
-                        infoEl.textContent = event.error.message;
+                        statusEl.textContent = `Erreur Capteur: ${event.error.name}`;
+                        infoEl.style.display = 'block';
+                        infoEl.textContent = `Message: ${event.error.message}`;
                     };
                     sensor.start();
                 } catch (error) {
                     statusEl.textContent = `Erreur initialisation: ${error.name}`;
-                    infoEl.textContent = error.message;
+                    infoEl.style.display = 'block';
+                    infoEl.textContent = `Message: ${error.message}`;
                 }
             } else {
                 statusEl.textContent = 'API Moderne non supportée.';
