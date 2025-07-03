@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Capteur Orientation</title>
+    <style>
+        body { font-family: monospace; padding: 20px; font-size: 16px; }
+        #status { padding: 10px; background-color: #f0f0f0; border: 1px solid #ccc; }
+        #data { white-space: pre; }
+    </style>
+</head>
+<body>
+    <h1>Test du Capteur d'Orientation</h1>
+    <div id="status">En attente d'interaction...</div>
+    <hr>
+    <div id="data"></div>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const dataEl = document.getElementById('data');
+
+        // Bouton pour demander la permission sur iOS
+        statusEl.innerHTML = '<button id="perm_button">Démarrer le test</button>';
+        const button = document.getElementById('perm_button');
+
+        button.onclick = () => {
+            statusEl.textContent = 'Demande de permission...';
+
+            // Demande de permission pour l'ancienne API (souvent nécessaire pour activer l'ensemble des capteurs de mouvement)
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission().then(permissionState => {
+                    if (permissionState === 'granted') {
+                        startSensor();
+                    } else {
+                        statusEl.textContent = 'Permission refusée.';
+                    }
+                }).catch(console.error);
+            } else {
+                startSensor();
+            }
+        };
+
+        function startSensor() {
+            if ('AbsoluteOrientationSensor' in window) {
+                statusEl.textContent = 'API Moderne (AbsoluteOrientationSensor) détectée. Démarrage...';
+                try {
+                    const sensor = new AbsoluteOrientationSensor({ frequency: 60 });
+                    sensor.onreading = () => {
+                        const q = sensor.quaternion;
+                        const yaw = Math.atan2(2.0 * (q[0] * q[1] + q[3] * q[2]), 1.0 - 2.0 * (q[1] * q[1] + q[2] * q[2]));
+                        const heading = (yaw * 180 / Math.PI + 360) % 360;
+
+                        dataEl.innerHTML = 
+                            `Quaternion (x,y,z,w): \n[${q[0].toFixed(2)}, ${q[1].toFixed(2)}, ${q[2].toFixed(2)}, ${q[3].toFixed(2)}]\n\n` +
+                            `Heading (Cap calculé): \n${heading.toFixed(2)}°`;
+                    };
+                    sensor.onerror = (event) => {
+                        statusEl.textContent = `Erreur capteur: ${event.error.name} - ${event.error.message}`;
+                    };
+                    sensor.start();
+                } catch (error) {
+                    statusEl.textContent = `Erreur initialisation: ${error.message}`;
+                }
+            } else {
+                statusEl.textContent = 'API Moderne non supportée. Tentative avec l\'ancienne API...';
+                window.addEventListener('deviceorientation', (event) => {
+                    const heading = (360 - event.alpha).toFixed(2);
+                    dataEl.innerHTML = `API Ancienne (deviceorientation)\nAlpha: ${event.alpha?.toFixed(2)}\nHeading: ${heading}`;
+                });
+            }
+        }
+    </script>
+</body>
+</html>
